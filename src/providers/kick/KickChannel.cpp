@@ -5,6 +5,7 @@
 #include "common/QLogging.hpp"
 #include "controllers/accounts/AccountController.hpp"
 #include "controllers/emotes/EmoteController.hpp"
+#include "KickEmotes.hpp"
 #include "messages/Emote.hpp"
 #include "messages/Link.hpp"
 #include "messages/Message.hpp"
@@ -38,6 +39,7 @@ KickChannel::KickChannel(const QString &name)
     , displayName_(name)
     , slug_(KickApi::slugify(this->getName()))
     , seventvEmotes_(std::make_shared<const EmoteMap>())
+    , localEmotes_(std::make_shared<const EmoteMap>())
 {
     this->setMentionFlag(MessageElementFlag::KickUsername);
 
@@ -67,6 +69,7 @@ void KickChannel::initialize(const UserInit &init)
 {
     this->setUserInfo(init);
     this->resolveChannelInfo();
+    this->reloadLocalEmotes(false);
 }
 
 std::shared_ptr<KickChannel> KickChannel::sharedFromThis()
@@ -143,6 +146,52 @@ void KickChannel::reloadSeventvEmotes(bool manualRefresh)
         manualRefresh, cacheHit);
 }
 
+void KickChannel::reloadLocalEmotes(bool manualRefresh)
+{
+    KickApi::privateEmotesInChannel(
+        this->getName(),
+        [weak = this->weakFromThis(), manualRefresh](
+            const ExpectedStr<std::vector<KickPrivateEmoteSetInfo>> &res) {
+            auto self = weak.lock();
+            if (!self)
+            {
+                return;
+            }
+            if (!res)
+            {
+                qCWarning(chatterinoKick)
+                    << "Failed to fetch local emotes for " << self->getDisplayName() << ":" << res.error();
+                self->localEmotes_ = EMPTY_EMOTE_MAP;
+                return;
+            }
+            auto emotes = std::make_shared<EmoteMap>();
+            for (const auto &set : *res)
+            {
+                if (!set.userID)
+                {
+                    continue;  // global
+                }
+                for (const auto &emoteInfo : set.emotes)
+                {
+                    if (emoteInfo.subscribersOnly && !self->isSub())
+                    {
+                        continue;
+                    }
+                    auto id = QString::number(emoteInfo.emoteID);
+                    auto emote = KickEmotes::emoteForID(id, emoteInfo.name);
+                    (*emotes)[emote->name] = emote;
+                }
+            }
+            if (manualRefresh)
+            {
+                self->addSystemMessage("Local emotes reloaded.");
+            }
+            self->localEmotes_ = std::move(emotes);
+            qCDebug(chatterinoKick)
+                << "Loaded" << self->localEmotes_->size() << "local emotes for" << self->getDisplayName();
+        });
+}
+
 std::shared_ptr<const EmoteMap> KickChannel::seventvEmotes() const
 {
     return this->seventvEmotes_.get();
@@ -151,6 +200,27 @@ std::shared_ptr<const EmoteMap> KickChannel::seventvEmotes() const
 EmotePtr KickChannel::seventvEmote(const EmoteName &name) const
 {
     auto emotes = this->seventvEmotes_.get();
+
+    auto it = emotes->find(name);
+    if (it != emotes->end())
+    {
+        return it->second;
+    }
+    return nullptr;
+}
+
+std::shared_ptr<const EmoteMap> KickChannel::localEmotes() const
+{
+    if (!this->localEmotes_)
+    {
+        return EMPTY_EMOTE_MAP;
+    }
+    return this->localEmotes_;
+}
+
+EmotePtr KickChannel::localEmote(const EmoteName &name) const
+{
+    auto emotes = this->localEmotes_.get();
 
     auto it = emotes->find(name);
     if (it != emotes->end())
@@ -344,6 +414,22 @@ void KickChannel::setVip(bool vip)
     }
     this->isVip_ = vip;
     this->userStateChanged.invoke();
+}
+
+bool KickChannel::isSub() const
+{
+    return this->isSub_;
+}
+
+void KickChannel::setSub(bool sub)
+{
+    if (this->isSub_ == sub)
+    {
+        return;
+    }
+    this->isSub_ = sub;
+    this->userStateChanged.invoke();
+    this->reloadLocalEmotes(false);
 }
 
 bool KickChannel::isBroadcaster() const
@@ -561,7 +647,7 @@ size_t KickChannel::maxBurstMessages() const
     {
         return 20;
     }
-    return 5;
+    return 6;
 }
 
 std::chrono::milliseconds KickChannel::minMessageOffset() const
@@ -633,13 +719,15 @@ QString KickChannel::prepareMessage(const QString &message) const
     // "[emote:{id}:{name}]". If the name doesn't match the emote name, Kick
     // will reject the message.
     auto globalEmotes = getApp()->getKickChatServer()->globalEmotes();
+    auto subEmotes = this->localEmotes();
     QString outMessage;
     const QChar *lastEnd = nullptr;
     for (QStringView word : baseMessage.tokenize(u' '))
     {
         EmoteName emote{word.toString()};  // FIXME: get rid of this
         auto it = globalEmotes->find(emote);
-        if (it == globalEmotes->end())
+        auto it2 = subEmotes->find(emote);
+        if (it == globalEmotes->end() && it2 == globalEmotes->end())
         {
             continue;
         }
@@ -655,9 +743,19 @@ QString KickChannel::prepareMessage(const QString &message) const
 
         lastEnd = word.end();
         outMessage += u"[emote:";
-        outMessage += it->second->id.string;
-        outMessage += ':';
-        outMessage += it->second->name.string;
+        if (it != globalEmotes->end())
+        {
+            outMessage += it->second->id.string;
+            outMessage += ':';
+            outMessage += it->second->name.string;
+
+        }
+        else if (it2 != subEmotes->end())
+        {
+            outMessage += it2->second->id.string;
+            outMessage += ':';
+            outMessage += it2->second->name.string;
+        }
         outMessage += ']';
     }
 

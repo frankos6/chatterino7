@@ -85,9 +85,12 @@ public:
         const QString &messageID);
 
     void reloadSeventvEmotes(bool manualRefresh);
+    void reloadLocalEmotes(bool manualRefresh);
 
     std::shared_ptr<const EmoteMap> seventvEmotes() const;
     EmotePtr seventvEmote(const EmoteName &name) const;
+    std::shared_ptr<const EmoteMap> localEmotes() const;
+    EmotePtr localEmote(const EmoteName &name) const;
 
     void addSeventvEmote(const seventv::eventapi::EmoteAddDispatch &dispatch);
 
@@ -112,6 +115,8 @@ public:
 
     bool isVip() const;
     void setVip(bool vip);
+    bool isSub() const;
+    void setSub(bool sub);
 
     bool isBroadcaster() const override;
     bool hasModRights() const override;
@@ -182,6 +187,7 @@ private:
     QString slug_;
 
     Atomic<std::shared_ptr<const EmoteMap>> seventvEmotes_;
+    std::shared_ptr<const EmoteMap> localEmotes_;
 
     QString seventvUserID_;
     QString seventvEmoteSetID_;
@@ -206,6 +212,7 @@ private:
 
     bool isMod_ = false;
     bool isVip_ = false;
+    bool isSub_ = false;
 
     StreamData streamData_;
 };

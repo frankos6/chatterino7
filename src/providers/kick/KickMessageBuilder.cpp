@@ -343,6 +343,7 @@ void appendKickBadges(KickMessageBuilder &builder, BoostJsonArray badges)
 {
     bool hasMod = false;
     bool hasVip = false;
+    bool hasSub = false;
     for (auto badgeObj : badges)
     {
         auto ty = badgeObj["type"].toStringView();
@@ -360,6 +361,10 @@ void appendKickBadges(KickMessageBuilder &builder, BoostJsonArray badges)
         {
             hasVip = true;
         }
+        else if (ty == "subscriber")
+        {
+            hasSub = true;
+        }
 
         builder.emplace<BadgeElement>(emote, flag);
     }
@@ -370,6 +375,7 @@ void appendKickBadges(KickMessageBuilder &builder, BoostJsonArray badges)
     {
         builder.channel()->setMod(hasMod);
         builder.channel()->setVip(hasVip);
+        builder.channel()->setSub(hasSub);
     }
 }
 

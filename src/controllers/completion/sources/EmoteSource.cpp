@@ -150,6 +150,7 @@ void EmoteSource::initializeFromChannel(const Channel *channel)
         addEmotes(emotes, *kickChannel->seventvEmotes(), "Channel 7TV");
         addEmotes(emotes, *getApp()->getKickChatServer()->globalEmotes(),
                   "Kick Emote");
+        addEmotes(emotes, *kickChannel->localEmotes(), "Kick Emote");
     }
 
     if (channel->isTwitchOrKickChannel())

@@ -218,9 +218,14 @@ KickPrivateEmoteInfo::KickPrivateEmoteInfo(BoostJsonObject obj)
 KickPrivateEmoteSetInfo::KickPrivateEmoteSetInfo(BoostJsonObject obj)
 {
     auto userIDVal = obj["user_id"];
-    if (userIDVal.isString())
+    if (userIDVal.isInt64())
     {
         this->userID = userIDVal.toUint64();
+    }
+    auto userSlug = obj["slug"];
+    if (userSlug.isString())
+    {
+        this->slug = userSlug.toQString();
     }
     auto emotesArr = obj["emotes"].toArray();
     this->emotes.reserve(emotesArr.size());

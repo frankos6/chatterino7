@@ -68,6 +68,7 @@ struct KickPrivateEmoteSetInfo {
 
     // if this is set, it's a user set - otherwise it's global
     std::optional<uint64_t> userID;
+    std::optional<QString> slug;
     std::vector<KickPrivateEmoteInfo> emotes;
 };
 

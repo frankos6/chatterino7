@@ -1264,6 +1264,7 @@ void SplitHeader::reloadChannelEmotes()
     else if (auto *kc = dynamic_cast<KickChannel *>(channel.get()))
     {
         kc->reloadSeventvEmotes(true);
+        kc->reloadLocalEmotes(true);
     }
 }
 

@@ -526,6 +526,9 @@ void EmotePopup::reloadEmotes()
         addEmotes(*globalChannel,
                   *getApp()->getKickChatServer()->globalEmotes(), "Kick");
 
+        addEmotes(*subChannel,
+                  *kickChannel_->localEmotes(), kickChannel_->getDisplayName());
+
         // channel
         if (Settings::instance().enableSevenTVChannelEmotes)
         {
