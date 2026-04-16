@@ -106,8 +106,6 @@ public:
 
     static KickApi *instance();
 
-    static QString slugify(const QString &usernameOrSlug);
-
     static void privateChannelInfo(const QString &username,
                                    Callback<KickPrivateChannelInfo> cb);
 
