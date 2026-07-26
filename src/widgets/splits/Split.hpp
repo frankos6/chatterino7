@@ -23,6 +23,7 @@ class SplitHeader;
 class SplitInput;
 class SplitContainer;
 class SplitOverlay;
+class PinnedMessageWidget;
 class SelectChannelDialog;
 class OverlayWindow;
 
@@ -54,6 +55,7 @@ public:
 
     ChannelView &getChannelView();
     SplitInput &getInput();
+    [[nodiscard]] PinnedMessageWidget *getPinnedBanner() const;
 
     IndirectChannel getIndirectChannel();
     ChannelPtr getChannel() const;
@@ -156,6 +158,8 @@ private:
 
     void refreshInputState(const QString &inputText);
 
+    void updateChannelConnections();
+
     IndirectChannel channel_;
 
     bool moderationMode_{};
@@ -166,6 +170,7 @@ private:
 
     QVBoxLayout *const vbox_;
     SplitHeader *const header_;
+    PinnedMessageWidget *const pinnedBanner_;
     ChannelView *const view_;
     SplitInput *const input_;
     SplitOverlay *const overlay_;
@@ -177,6 +182,8 @@ private:
     pajlada::Signals::Connection channelIDChangedConnection_;
     pajlada::Signals::Connection usermodeChangedConnection_;
     pajlada::Signals::Connection roomModeChangedConnection_;
+    pajlada::Signals::ScopedConnection sendWaitConnection_;
+    pajlada::Signals::ScopedConnection sharedChatConnection_;
 
     pajlada::Signals::Connection indirectChannelChangedConnection_;
 
@@ -205,6 +212,7 @@ public Q_SLOTS:
     void openChatterList();
     void openSubPage();
     void reconnect();
+    void togglePinnedBanner();
 };
 
 }  // namespace chatterino
